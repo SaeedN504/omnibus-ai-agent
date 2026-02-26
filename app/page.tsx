@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { NeuralNoise } from '@/components/ui/neural-noise';
 
 export default function Home() {
   const [input, setInput] = useState('');
@@ -27,31 +28,37 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white p-8">
-      <h1 className="text-4xl font-bold mb-8">Omnibus AI Agent</h1>
+    <main className="relative min-h-screen bg-black text-white overflow-hidden">
+      <NeuralNoise />
       
-      <form onSubmit={handleSubmit} className="max-w-2xl">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          className="w-full p-4 bg-gray-800 rounded mb-4 text-white"
-          rows={4}
-          placeholder="Enter your message..."
-        />
-        <button 
-          type="submit"
-          className="px-6 py-2 bg-blue-600 rounded hover:bg-blue-700"
-        >
-          Send
-        </button>
-      </form>
+      <div className="relative z-10 p-8">
+        <h1 className="text-4xl font-bold mb-8 bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+          Omnibus AI Agent
+        </h1>
+        
+        <form onSubmit={handleSubmit} className="max-w-2xl">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            className="w-full p-4 bg-gray-800/80 backdrop-blur rounded mb-4 text-white border border-gray-700"
+            rows={4}
+            placeholder="Enter your message..."
+          />
+          <button 
+            type="submit"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+          >
+            Send
+          </button>
+        </form>
 
-      {response && (
-        <div className="mt-8 p-4 bg-gray-800 rounded max-w-2xl">
-          <h2 className="font-bold mb-2">Response:</h2>
-          <p>{response}</p>
-        </div>
-      )}
+        {response && (
+          <div className="mt-8 p-4 bg-gray-800/80 backdrop-blur rounded max-w-2xl border border-gray-700">
+            <h2 className="font-bold mb-2 text-blue-400">Response:</h2>
+            <p>{response}</p>
+          </div>
+        )}
+      </div>
     </main>
   );
 }
