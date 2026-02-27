@@ -1,9 +1,8 @@
-@"
 'use client';
 
 import { useEffect, useRef } from 'react';
 
-export function NeuralNoise() {
+export function NeuralNoise({ color = [0.9, 0.2, 0.4], opacity = 0.95, speed = 0.001 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -16,159 +15,142 @@ export function NeuralNoise() {
       return;
     }
 
-    const vertexShaderSource = \`
+    const vsSource = `
       attribute vec2 position;
       void main() {
         gl_Position = vec4(position, 0.0, 1.0);
       }
-    \`;
+    `;
 
-    const fragmentShaderSource = \`
+    const fsSource = `
       precision highp float;
-      uniform float time;
       uniform vec2 resolution;
-      uniform vec2 pointer;
-
-      float noise(vec2 p) {
-        return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+      uniform float time;
+      uniform vec2 mouse;
+      
+      float neuro_shape(vec2 p, float t) {
+        vec2 r = vec2(1.0);
+        float d = 0.0;
+        for(float i = 1.0; i < 8.0; i++) {
+          r = vec2(
+            sin(p.x * i + t * 0.5) * cos(p.y * i + t * 0.3),
+            cos(p.x * i * 0.7 - t * 0.4) * sin(p.y * i * 0.8 + t * 0.2)
+          );
+          d += length(r) * 0.5;
+        }
+        return d;
       }
-
+      
       void main() {
-        vec2 uv = gl_FragCoord.xy / resolution;
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
         vec2 p = uv * 2.0 - 1.0;
         p.x *= resolution.x / resolution.y;
-        
-        float t = time * 0.5;
-        
-        float n = noise(p + t);
-        n += noise(p * 2.0 - t) * 0.5;
-        n += noise(p * 4.0 + t * 0.5) * 0.25;
-        n /= 1.75;
-        
-        vec2 mouse = pointer / resolution * 2.0 - 1.0;
-        mouse.x *= resolution.x / resolution.y;
-        float dist = length(p - mouse);
-        n += smoothstep(0.5, 0.0, dist) * 0.3;
-        
-        vec3 color1 = vec3(0.1, 0.0, 0.2);
-        vec3 color2 = vec3(0.0, 0.4, 0.8);
-        vec3 color3 = vec3(0.8, 0.0, 0.4);
-        
-        vec3 color = mix(color1, color2, n);
-        color = mix(color, color3, noise(p * 3.0 + t) * 0.5);
-        
-        vec2 grid = abs(fract(p * 4.0 - 0.5) - 0.5) / fwidth(p * 4.0);
-        float line = min(grid.x, grid.y);
-        color += vec3(0.0, 0.8, 1.0) * (1.0 - min(line, 1.0)) * 0.1;
-        
-        gl_FragColor = vec4(color, 1.0);
+        vec2 mousePos = mouse * 2.0 - 1.0;
+        mousePos.x *= resolution.x / resolution.y;
+        float mouseDist = length(p - mousePos);
+        float mouseInfluence = smoothstep(1.5, 0.0, mouseDist) * 0.3;
+        float t = time * 0.3;
+        float n = neuro_shape(p + mousePos * mouseInfluence, t);
+        vec3 color1 = vec3(0.98, 0.45, 0.52);
+        vec3 color2 = vec3(0.88, 0.11, 0.28);
+        vec3 finalColor = mix(color2, color1, n * 0.5 + 0.5);
+        finalColor *= 0.15;
+        gl_FragColor = vec4(finalColor, 1.0);
       }
-    \`;
+    `;
 
-    function createShader(type: number, source: string): WebGLShader | null {
+    function compileShader(source: string, type: number): WebGLShader | null {
       const shader = gl.createShader(type);
       if (!shader) return null;
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(shader));
+        console.error('Shader compile error:', gl.getShaderInfoLog(shader));
         gl.deleteShader(shader);
         return null;
       }
       return shader;
     }
 
-    const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
-    
+    const vertexShader = compileShader(vsSource, gl.VERTEX_SHADER);
+    const fragmentShader = compileShader(fsSource, gl.FRAGMENT_SHADER);
+
     if (!vertexShader || !fragmentShader) return;
 
     const program = gl.createProgram();
     if (!program) return;
-    
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
-
+    
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error(gl.getProgramInfoLog(program));
+      console.error('Program link error:', gl.getProgramInfoLog(program));
       return;
     }
-
+    
     gl.useProgram(program);
 
-    const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
+    const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-    const position = gl.getAttribLocation(program, 'position');
-    gl.enableVertexAttribArray(position);
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+    const positionLocation = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
 
-    const timeUniform = gl.getUniformLocation(program, 'time');
-    const resolutionUniform = gl.getUniformLocation(program, 'resolution');
-    const pointerUniform = gl.getUniformLocation(program, 'pointer');
+    const resolutionLocation = gl.getUniformLocation(program, 'resolution');
+    const timeLocation = gl.getUniformLocation(program, 'time');
+    const mouseLocation = gl.getUniformLocation(program, 'mouse');
 
-    let animationId: number;
-    let startTime = Date.now();
-    const pointer = { x: 0, y: 0 };
-
-    function render() {
-      // Check canvas is still available
-      const currentCanvas = canvasRef.current;
-      if (!currentCanvas) return;
-      
-      const time = (Date.now() - startTime) * 0.001;
-      
-      gl.uniform1f(timeUniform, time);
-      gl.uniform2f(resolutionUniform, currentCanvas.width, currentCanvas.height);
-      gl.uniform2f(pointerUniform, pointer.x, pointer.y);
-      
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      animationId = requestAnimationFrame(render);
-    }
-
-    function handleResize() {
+    function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       gl.viewport(0, 0, canvas.width, canvas.height);
     }
+    resize();
+    window.addEventListener('resize', resize);
 
+    const mouse = { x: 0.5, y: 0.5 };
     function handleMouseMove(e: MouseEvent) {
-      pointer.x = e.clientX;
-      pointer.y = e.clientY;
+      mouse.x = e.clientX / window.innerWidth;
+      mouse.y = 1.0 - e.clientY / window.innerHeight;
     }
-
-    window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
+
+    let startTime = Date.now();
+    let animationId: number;
     
-    handleResize();
+    function render() {
+      const time = (Date.now() - startTime) / 1000;
+      gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+      gl.uniform1f(timeLocation, time);
+      gl.uniform2f(mouseLocation, mouse.x, mouse.y);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      animationId = requestAnimationFrame(render);
+    }
     render();
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animationId);
-      gl.deleteProgram(program);
-      gl.deleteShader(vertexShader);
-      gl.deleteShader(fragmentShader);
-      gl.deleteBuffer(buffer);
     };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 w-full h-full pointer-events-none"
-      style={{ background: 'transparent', zIndex: 0 }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        zIndex: 0,
+        pointerEvents: 'none',
+        opacity,
+      }}
     />
   );
 }
-"@ | Set-Content components/ui/neural-noise.tsx -Encoding UTF8
-
-git add components/ui/neural-noise.tsx
-
-git commit -m "Fix canvas null check in render function"
-
-git push origin main
