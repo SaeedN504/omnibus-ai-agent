@@ -1,3 +1,4 @@
+@"
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -9,20 +10,23 @@ export function NeuralNoise() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext('webgl');
-    if (!gl) {
+    const glContext = canvas.getContext('webgl');
+    if (!glContext) {
       console.error('WebGL not supported');
       return;
     }
+    
+    // Store in a const that TypeScript knows is not null
+    const gl = glContext;
 
-    const vertexShaderSource = `
+    const vertexShaderSource = \`
       attribute vec2 position;
       void main() {
         gl_Position = vec4(position, 0.0, 1.0);
       }
-    `;
+    \`;
 
-    const fragmentShaderSource = `
+    const fragmentShaderSource = \`
       precision highp float;
       uniform float time;
       uniform vec2 resolution;
@@ -62,10 +66,9 @@ export function NeuralNoise() {
         
         gl_FragColor = vec4(color, 1.0);
       }
-    `;
+    \`;
 
     function createShader(type: number, source: string): WebGLShader | null {
-      if (!gl) return null;
       const shader = gl.createShader(type);
       if (!shader) return null;
       gl.shaderSource(shader, source);
@@ -115,8 +118,6 @@ export function NeuralNoise() {
     const pointer = { x: 0, y: 0 };
 
     function render() {
-      if (!gl) return;
-      
       const time = (Date.now() - startTime) * 0.001;
       
       gl.uniform1f(timeUniform, time);
@@ -163,3 +164,4 @@ export function NeuralNoise() {
     />
   );
 }
+"@ | Set-Content components/ui/neural-no
