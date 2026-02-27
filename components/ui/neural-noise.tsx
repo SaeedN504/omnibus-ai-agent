@@ -64,11 +64,6 @@ export function NeuralNoise({ color = [0.9, 0.2, 0.4], opacity = 0.95, speed = 0
       if (!shader) return null;
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-        gl.deleteShader(shader);
-        return null;
-      }
       return shader;
     }
 
@@ -82,12 +77,6 @@ export function NeuralNoise({ color = [0.9, 0.2, 0.4], opacity = 0.95, speed = 0
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
-    
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error('Program link error:', gl.getProgramInfoLog(program));
-      return;
-    }
-    
     gl.useProgram(program);
 
     const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
