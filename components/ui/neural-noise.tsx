@@ -10,9 +10,11 @@ export function NeuralNoise() {
     if (!canvas) return;
 
     const gl = canvas.getContext('webgl');
-    if (!gl) return;
+    if (!gl) {
+      console.error('WebGL not supported');
+      return;
+    }
 
-    // Vertex shader
     const vertexShaderSource = `
       attribute vec2 position;
       void main() {
@@ -20,7 +22,6 @@ export function NeuralNoise() {
       }
     `;
 
-    // Fragment shader - neural network pattern
     const fragmentShaderSource = `
       precision highp float;
       uniform float time;
@@ -38,19 +39,16 @@ export function NeuralNoise() {
         
         float t = time * 0.5;
         
-        // Create flowing noise pattern
         float n = noise(p + t);
         n += noise(p * 2.0 - t) * 0.5;
         n += noise(p * 4.0 + t * 0.5) * 0.25;
         n /= 1.75;
         
-        // Mouse interaction
         vec2 mouse = pointer / resolution * 2.0 - 1.0;
         mouse.x *= resolution.x / resolution.y;
         float dist = length(p - mouse);
         n += smoothstep(0.5, 0.0, dist) * 0.3;
         
-        // Neural colors - purple/blue/pink
         vec3 color1 = vec3(0.1, 0.0, 0.2);
         vec3 color2 = vec3(0.0, 0.4, 0.8);
         vec3 color3 = vec3(0.8, 0.0, 0.4);
@@ -58,7 +56,6 @@ export function NeuralNoise() {
         vec3 color = mix(color1, color2, n);
         color = mix(color, color3, noise(p * 3.0 + t) * 0.5);
         
-        // Grid overlay
         vec2 grid = abs(fract(p * 4.0 - 0.5) - 0.5) / fwidth(p * 4.0);
         float line = min(grid.x, grid.y);
         color += vec3(0.0, 0.8, 1.0) * (1.0 - min(line, 1.0)) * 0.1;
@@ -67,8 +64,8 @@ export function NeuralNoise() {
       }
     `;
 
-    // Create shaders
     function createShader(type: number, source: string): WebGLShader | null {
+      if (!gl) return null;
       const shader = gl.createShader(type);
       if (!shader) return null;
       gl.shaderSource(shader, source);
@@ -100,7 +97,6 @@ export function NeuralNoise() {
 
     gl.useProgram(program);
 
-    // Set up geometry
     const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -110,7 +106,6 @@ export function NeuralNoise() {
     gl.enableVertexAttribArray(position);
     gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
 
-    // Get uniform locations
     const timeUniform = gl.getUniformLocation(program, 'time');
     const resolutionUniform = gl.getUniformLocation(program, 'resolution');
     const pointerUniform = gl.getUniformLocation(program, 'pointer');
@@ -120,6 +115,8 @@ export function NeuralNoise() {
     const pointer = { x: 0, y: 0 };
 
     function render() {
+      if (!gl) return;
+      
       const time = (Date.now() - startTime) * 0.001;
       
       gl.uniform1f(timeUniform, time);
