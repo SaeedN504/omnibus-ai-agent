@@ -10,14 +10,14 @@ export function NeuralNoise() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const glContext = canvas.getContext('webgl');
-    if (!glContext) {
+    const gl = canvas.getContext('webgl');
+    if (!gl) {
       console.error('WebGL not supported');
       return;
     }
-    
-    // Store in a const that TypeScript knows is not null
-    const gl = glContext;
+
+    // Store gl in a variable that TypeScript knows is not null
+    const glContext = gl;
 
     const vertexShaderSource = \`
       attribute vec2 position;
@@ -69,49 +69,49 @@ export function NeuralNoise() {
     \`;
 
     function createShader(type: number, source: string): WebGLShader | null {
-      const shader = gl.createShader(type);
+      const shader = glContext.createShader(type);
       if (!shader) return null;
-      gl.shaderSource(shader, source);
-      gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(shader));
-        gl.deleteShader(shader);
+      glContext.shaderSource(shader, source);
+      glContext.compileShader(shader);
+      if (!glContext.getShaderParameter(shader, glContext.COMPILE_STATUS)) {
+        console.error(glContext.getShaderInfoLog(shader));
+        glContext.deleteShader(shader);
         return null;
       }
       return shader;
     }
 
-    const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
+    const vertexShader = createShader(glContext.VERTEX_SHADER, vertexShaderSource);
+    const fragmentShader = createShader(glContext.FRAGMENT_SHADER, fragmentShaderSource);
     
     if (!vertexShader || !fragmentShader) return;
 
-    const program = gl.createProgram();
+    const program = glContext.createProgram();
     if (!program) return;
     
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.linkProgram(program);
+    glContext.attachShader(program, vertexShader);
+    glContext.attachShader(program, fragmentShader);
+    glContext.linkProgram(program);
 
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error(gl.getProgramInfoLog(program));
+    if (!glContext.getProgramParameter(program, glContext.LINK_STATUS)) {
+      console.error(glContext.getProgramInfoLog(program));
       return;
     }
 
-    gl.useProgram(program);
+    glContext.useProgram(program);
 
     const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    const buffer = glContext.createBuffer();
+    glContext.bindBuffer(glContext.ARRAY_BUFFER, buffer);
+    glContext.bufferData(glContext.ARRAY_BUFFER, vertices, glContext.STATIC_DRAW);
 
-    const position = gl.getAttribLocation(program, 'position');
-    gl.enableVertexAttribArray(position);
-    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+    const position = glContext.getAttribLocation(program, 'position');
+    glContext.enableVertexAttribArray(position);
+    glContext.vertexAttribPointer(position, 2, glContext.FLOAT, false, 0, 0);
 
-    const timeUniform = gl.getUniformLocation(program, 'time');
-    const resolutionUniform = gl.getUniformLocation(program, 'resolution');
-    const pointerUniform = gl.getUniformLocation(program, 'pointer');
+    const timeUniform = glContext.getUniformLocation(program, 'time');
+    const resolutionUniform = glContext.getUniformLocation(program, 'resolution');
+    const pointerUniform = glContext.getUniformLocation(program, 'pointer');
 
     let animationId: number;
     let startTime = Date.now();
@@ -120,18 +120,18 @@ export function NeuralNoise() {
     function render() {
       const time = (Date.now() - startTime) * 0.001;
       
-      gl.uniform1f(timeUniform, time);
-      gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
-      gl.uniform2f(pointerUniform, pointer.x, pointer.y);
+      glContext.uniform1f(timeUniform, time);
+      glContext.uniform2f(resolutionUniform, canvas.width, canvas.height);
+      glContext.uniform2f(pointerUniform, pointer.x, pointer.y);
       
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      glContext.drawArrays(glContext.TRIANGLE_STRIP, 0, 4);
       animationId = requestAnimationFrame(render);
     }
 
     function handleResize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      gl.viewport(0, 0, canvas.width, canvas.height);
+      glContext.viewport(0, 0, canvas.width, canvas.height);
     }
 
     function handleMouseMove(e: MouseEvent) {
@@ -149,10 +149,10 @@ export function NeuralNoise() {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       cancelAnimationFrame(animationId);
-      gl.deleteProgram(program);
-      gl.deleteShader(vertexShader);
-      gl.deleteShader(fragmentShader);
-      gl.deleteBuffer(buffer);
+      glContext.deleteProgram(program);
+      glContext.deleteShader(vertexShader);
+      glContext.deleteShader(fragmentShader);
+      glContext.deleteBuffer(buffer);
     };
   }, []);
 
@@ -164,4 +164,7 @@ export function NeuralNoise() {
     />
   );
 }
-"@ | Set-Content components/ui/neural-no
+"@ | Set-Content components/ui/neural-noise.tsx -Encoding UTF8
+
+# Verify
+Get-Content components/ui/neural-noise.tsx | Select-Object -Skip 70 -First 3
